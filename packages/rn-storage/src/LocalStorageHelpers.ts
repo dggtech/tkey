@@ -1,5 +1,5 @@
-import { ShareStore } from "@tkey/common-types";
 import AsyncStorage, { AsyncStorageStatic } from "@react-native-async-storage/async-storage";
+import { ShareStore } from "@tkey/common-types";
 
 function storageAvailable(): boolean {
   let storage: AsyncStorageStatic;

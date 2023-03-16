@@ -1,4 +1,5 @@
 import { DeviceShareDescription, IModule, ITKeyApi, ShareStore, StringifiedType } from "@tkey/common-types";
+
 import { getShareFromLocalStorage, storeShareOnLocalStorage } from "./LocalStorageHelpers";
 
 export const RN_STORAGE_MODULE_NAME = "rnStorage";
@@ -41,12 +42,7 @@ class RNStorageModule implements IModule {
   async getDeviceShare(): Promise<ShareStore> {
     const metadata = this.tbSDK.getMetadata();
     const tkeypubx = metadata.pubKey.x.toString("hex");
-    let shareStore: ShareStore;
-    try {
-      shareStore = await getShareFromLocalStorage(tkeypubx);
-    } catch (localErr) {
-      throw localErr;
-    }
+    const shareStore: ShareStore = await getShareFromLocalStorage(tkeypubx);
     return shareStore;
   }
 
