@@ -45,7 +45,6 @@ class RNStorageModule implements IModule {
     try {
       shareStore = await getShareFromLocalStorage(tkeypubx);
     } catch (localErr) {
-      console.log("🚀 ~ file: RNStorageModule.ts:53 ~ RNStorageModule ~ getDeviceShare ~ localErr:", localErr);
       throw localErr;
     }
     return shareStore;
