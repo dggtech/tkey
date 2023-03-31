@@ -1,71 +1,100 @@
-import { StringifiedType, TorusServiceProviderArgs } from "@tkey/common-types";
+import { StringifiedType } from "@tkey/common-types";
 import { ServiceProviderBase } from "@tkey/service-provider-base";
-import CustomAuth, {
-  AggregateLoginParams,
-  CustomAuthArgs,
-  HybridAggregateLoginParams,
-  InitParams,
-  SubVerifierDetails,
-  TorusAggregateLoginResponse,
-  TorusHybridAggregateLoginResponse,
-  TorusLoginResponse,
-} from "@toruslabs/customauth";
-import BN from "bn.js";
+// import { getPublic, sign } from "@toruslabs/eccrypto";
+// import { decryptData, encryptData, keccak256 } from "@toruslabs/metadata-helpers";
+import base64url from "base64url";
+// import EventEmitter from "events";
+import log from "loglevel";
+import { URL } from "react-native-url-polyfill";
+
+import { IWebBrowser } from "./types/IWebBrowser";
+import { SdkInitParams, SdkLoginParams } from "./types/sdk";
+
+(process as any).browser = true;
 
 class TorusServiceProvider extends ServiceProviderBase {
-  directWeb: CustomAuth;
+  initParams: SdkInitParams;
 
-  singleLoginKey: BN;
+  webBrowser: IWebBrowser;
 
-  customAuthArgs: CustomAuthArgs;
-
-  constructor({ enableLogging = false, postboxKey, customAuthArgs }: TorusServiceProviderArgs) {
+  constructor({
+    enableLogging = false,
+    postboxKey,
+    webBrowser,
+    initParams,
+  }: {
+    enableLogging?: boolean;
+    postboxKey?: string;
+    webBrowser: IWebBrowser;
+    initParams: SdkInitParams;
+  }) {
     super({ enableLogging, postboxKey });
-    this.customAuthArgs = customAuthArgs;
-    this.directWeb = new CustomAuth(customAuthArgs);
     this.serviceProviderName = "TorusServiceProvider";
+    this.initParams = initParams;
+    if (!this.initParams.sdkUrl) {
+      this.initParams.sdkUrl = "https://sdk.openlogin.com";
+    }
+    this.webBrowser = webBrowser;
   }
 
   static fromJSON(value: StringifiedType): TorusServiceProvider {
-    const { enableLogging, postboxKey, customAuthArgs, serviceProviderName } = value;
+    const { enableLogging, postboxKey, webBrowser, initParams, serviceProviderName } = value;
     if (serviceProviderName !== "TorusServiceProvider") return undefined;
 
     return new TorusServiceProvider({
       enableLogging,
       postboxKey,
-      customAuthArgs,
+      webBrowser,
+      initParams,
     });
   }
 
-  async init(params: InitParams): Promise<void> {
-    return this.directWeb.init(params);
+  async triggerLogin(options: SdkLoginParams) {
+    // const obj = await this.directWeb.triggerLogin(params);
+    // this.postboxKey = new BN(obj.privateKey, "hex");
+    // return obj;
+    const result = await this.request("login", options.redirectUrl, options);
+    console.log("🚀 ~ file: TorusServiceProvider.ts:59 ~ TorusServiceProvider ~ triggerLogin ~ result:", result);
+    return result;
   }
 
-  async triggerLogin(params: SubVerifierDetails): Promise<TorusLoginResponse> {
-    const obj = await this.directWeb.triggerLogin(params);
-    this.postboxKey = new BN(obj.privateKey, "hex");
-    return obj;
-  }
+  private async request(path: string, redirectUrl: string, params: Record<string, unknown> = {}) {
+    const initParams = {
+      ...this.initParams,
+      clientId: this.initParams.clientId,
+      network: this.initParams.network,
+      ...(!!this.initParams.redirectUrl && {
+        redirectUrl: this.initParams.redirectUrl,
+      }),
+    };
 
-  async triggerAggregateLogin(params: AggregateLoginParams): Promise<TorusAggregateLoginResponse> {
-    const obj = await this.directWeb.triggerAggregateLogin(params);
-    this.postboxKey = new BN(obj.privateKey, "hex");
-    return obj;
-  }
+    const mergedParams = {
+      init: initParams,
+      params: {
+        ...params,
+        ...(!params.redirectUrl && { redirectUrl }),
+      },
+    };
 
-  async triggerHybridAggregateLogin(params: HybridAggregateLoginParams): Promise<TorusHybridAggregateLoginResponse> {
-    const obj = await this.directWeb.triggerHybridAggregateLogin(params);
-    const aggregateLoginKey = obj.aggregateLogins[0].privateKey;
-    this.postboxKey = new BN(aggregateLoginKey, "hex");
-    this.singleLoginKey = new BN(obj.singleLogin.privateKey, "hex");
-    return obj;
+    log.debug(`[Web3Auth] params passed to Web3Auth: ${mergedParams}`);
+
+    const hash = base64url.encode(JSON.stringify(mergedParams));
+
+    const url = new URL(this.initParams.sdkUrl);
+    url.pathname = `${url.pathname}${path}`;
+    url.hash = hash;
+
+    log.info(`[Web3Auth] opening login screen in browser at ${url.href}, will redirect to ${redirectUrl}`);
+
+    return this.webBrowser.openAuthSessionAsync(url.href, redirectUrl);
   }
 
   toJSON(): StringifiedType {
     return {
       ...super.toJSON(),
       serviceProviderName: this.serviceProviderName,
-      customAuthArgs: this.customAuthArgs,
+      webBrowser: this.webBrowser,
+      initParams: this.initParams,
     };
   }
 }
