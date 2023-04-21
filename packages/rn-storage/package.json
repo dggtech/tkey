@@ -43,6 +43,7 @@
     "@babel/runtime": "7.x"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.18.1",
     "@tkey/common-types": "^7.2.0",
     "@types/bn.js": "^5.1.1",
     "bn.js": "^5.2.1"
