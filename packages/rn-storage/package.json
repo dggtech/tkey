@@ -1,5 +1,5 @@
 {
-  "name": "@tkey/web-storage",
+  "name": "@tkey/rn-storage",
   "version": "7.2.0",
   "description": "TKey Web Storage Module",
   "author": "Torus Labs",
